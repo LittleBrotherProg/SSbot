@@ -13,10 +13,6 @@ GROUP_TOKEN = '85a8d32f22314f81cb27945010b31f2b59b00c9dcca40c39f2a8f1a395653509e
 API_VERSION = '5.120'
 f_toggle: bool = False
 
-
-
-
-
 vk_session = VkApi(token=GROUP_TOKEN, api_version=API_VERSION)
 vk = vk_session.get_api()
 longpoll = VkBotLongPoll(vk_session, group_id=GROUP_ID)
@@ -56,7 +52,6 @@ def execute_read_query(connection, query):
 keyboard7 = []
 
 
-
 def buttns_name(database, list):
     keyboard7.clear()
     select_users = f"SELECT * FROM `{database}` ORDER BY `{database}`.`{list}` DESC"
@@ -70,9 +65,6 @@ def buttns_name(database, list):
 
 
 
-
-
-#ventilation_buttons_name = buttns_name("ventilation_buttons_name", "buttons_name")
 
 def send_message(user_id, message, keyboard=None):
     post = {
@@ -109,8 +101,6 @@ def main_menu(buttons_name):
     return keybrd
 
 
-
-
 for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
         text = event.obj.message['text']
@@ -119,12 +109,13 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         user_get = user_get[0]
         first_name = user_get['first_name']
 
-        if text == 'Диагностика оборудования (за 1 точку)':
-            keyboard_1 = VkKeyboard(one_time=False, inline=True)
-            keyboard_1.add_callback_button(label='Добавить красного ',
+        if text == 'Диагностика оборудования за 1 точку':
+           keyboard_1 = VkKeyboard(one_time=False, inline=True)
+           keyboard_1.add_callback_button(label='Добавить красного ',
                                            color=VkKeyboardColor.PRIMARY,
                                            payload={"type": "my_own_100500_type_edit"})
-            send_message(user_id, "Сервисные услуги", keyboard_1)
+           send_message(user_id, "Сервисные услуги", keyboard_1)
+
 
         elif text == "Сервис":
             g = -1
@@ -175,6 +166,7 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         elif text == "Вентиляционные системы":
             g = -2
             h = 0
+            ventilation_buttons_name = buttns_name("ventilation_buttons_name", "buttons_name")
             keyboard = VkKeyboard(one_time=True)
             hg = main_menu(ventilation_buttons_name)
             for kk in hg:
