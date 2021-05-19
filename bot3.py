@@ -178,6 +178,7 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         first_name = user_get['first_name']
 
         if text == 'Диагностика оборудования за 1 точку':
+
             send_message_carusel(user_id, "Карусель!", template=carousel)
 
 
