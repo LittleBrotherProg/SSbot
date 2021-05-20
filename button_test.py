@@ -60,41 +60,39 @@ main_buttons_name = buttns_name("main_buttons_name", "buttons_name")
 print(main_buttons_name)
 
 joj = ["До 1500 куб|800 руб", "До 3000 куб|1000 руб", "От 3000 куб|1400 руб"]
-def car(id_photo, title, description, link, label):
 
+
+def car(id_photo, title, description, link, label):
     lp = {"type": "carousel", "elements": [], }
     gnt = None
 
     g = 0
 
     for kt in main_buttons_name:
-
         hg = {"buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
-        mom = hg["buttons"][0]["action"]
 
         rp = {"photo_id": id_photo,
               "title": kt, "description": description,
               "action": {"type": "open_link", "link": link}, }
         for tk in joj:
+            orig = {"buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
 
-            print(mom)
             if hg["buttons"][0]["action"]["label"] == "":
                 hg["buttons"][0]["action"]["label"] = tk
                 print(hg)
+                print(orig)
+
                 print(1)
             elif hg["buttons"][0]["action"]["label"] != "":
-                print(mom)
-                hg["buttons"][0]["action"]["label"] = tk
+                orig["buttons"][0]["action"]["label"] = tk
 
-
-                hy = hg["buttons"][0]
+                hy = orig["buttons"][0]
                 hg["buttons"].append(hy)
                 print(hg)
                 print(2)
 
 
 
-        gnt = gnt + lp
 
         pup = {**rp, **hg}
         lp["elements"].append(pup)
@@ -104,8 +102,6 @@ def car(id_photo, title, description, link, label):
         g += 1
         print(g)
     print(lp)
-
-
 
     return lp
 
