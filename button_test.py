@@ -7,6 +7,7 @@ import json
 import mysql.connector
 from mysql.connector import Error
 import re
+from vk_api import VkApi
 
 
 def create_connection(user_name, user_password, db_name):
@@ -49,84 +50,61 @@ def buttns_name(database, list):
     users = execute_read_query(connection, select_users)
     for user_mysql in users:
         print(user_mysql)
-        user_vkbot = re.sub("[(|,)]", "", str(user_mysql))
+        user_vkbot = re.sub("[(|'|,)]", "", str(user_mysql))
         keyboard7.append(user_vkbot)
         print(keyboard7)
     return keyboard7
 
 
-main_buttons_name = buttns_name("main_buttons_name", "buttons_name")
+def to_create_carousel(id_photo, title, description, link, label):
+    foundation = {"type": "carousel", "elements": [], }
+    label_buttons = ["Заказать услугу", "Скачать прайс"]
+    service_buttons_name = buttns_name("servis_buttons_name", "buttons_name")
 
-print(main_buttons_name)
+    for title in service_buttons_name:
+        remember_buttons = {
+            "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
 
-joj = ["До 1500 куб|800 руб", "До 3000 куб|1000 руб", "От 3000 куб|1400 руб"]
+        properties_carousel = {"photo_id": id_photo,
+                               "title": title, "description": description,
+                               "action": {"type": "open_link", "link": link}, }
 
+        for lb in label_buttons:
+            template_buttons = {
+                "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
 
-def car(id_photo, title, description, link, label):
-    lp = {"type": "carousel", "elements": [], }
-    gnt = None
+            if remember_buttons["buttons"][0]["action"]["label"] == "":
+                remember_buttons["buttons"][0]["action"]["label"] = lb
 
-    g = 0
+            elif remember_buttons["buttons"][0]["action"]["label"] != "":
+                template_buttons["buttons"][0]["action"]["label"] = lb
+                tb = template_buttons["buttons"][0]
+                remember_buttons["buttons"].append(tb)
 
-    for kt in main_buttons_name:
-        hg = {"buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
+        properties = {**properties_carousel, **remember_buttons}
+        foundation["elements"].append(properties)
 
-        rp = {"photo_id": id_photo,
-              "title": kt, "description": description,
-              "action": {"type": "open_link", "link": link}, }
-        for tk in joj:
-            orig = {"buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
-
-            if hg["buttons"][0]["action"]["label"] == "":
-                hg["buttons"][0]["action"]["label"] = tk
-                print(hg)
-                print(orig)
-
-                print(1)
-            elif hg["buttons"][0]["action"]["label"] != "":
-                orig["buttons"][0]["action"]["label"] = tk
-
-                hy = orig["buttons"][0]
-                hg["buttons"].append(hy)
-                print(hg)
-                print(2)
+    return foundation
 
 
+carousel = to_create_carousel("-204661014_457239019", "asdasda", "asdasda", "https://vk.com/littlebr0therr", "asdasda")
 
-
-        pup = {**rp, **hg}
-        lp["elements"].append(pup)
-        print(hg)
-        print(pup)
-        print(lp)
-        g += 1
-        print(g)
-    print(lp)
-
-    return lp
-
-
-kok = car("-204661014_457239019", "asdasda", "asdasda", "https://vk.com/littlebr0therr", "asdasda")
-
-#
-kok = json.dumps(kok, ensure_ascii=False).encode('utf-8')
-kok = str(kok.decode('utf-8'))
+carousel = json.dumps(carousel, ensure_ascii=False).encode('utf-8')
+carousel = str(carousel.decode('utf-8'))
 
 GROUP_ID = '204661014'
 GROUP_TOKEN = '22117b50d967969e1e3d42997ef4cebba7aec9482cbaed68cf13a6e9551de367fe3ebb9b588df4cd504e8'
 API_VERSION = '5.103'
 
-vk = vk_api.VkApi(token=GROUP_TOKEN)
-
-vk._auth_token()
-
-vk.get_api()
-
-longpoll = VkBotLongPoll(vk, GROUP_ID)
+vk_session = VkApi(token=GROUP_TOKEN)
+vk = vk_session.get_api()
 
 
-def send_message_carusel(user_id, text, keyboard=None, template=None):
-    vk.method("messages.send", {"user_id": user_id, "message": text,
+longpoll = VkBotLongPoll(vk_session, GROUP_ID)
+
+
+def send_message_carousel(user_id, text, keyboard=None, template=None):
+    vk_session.method("messages.send", {"user_id": user_id, "message": text,
                                 "random_id": random.randint(-9223372036854775807, 9223372036854775807),
                                 "keyboard": keyboard, "template": template})
 
@@ -144,4 +122,4 @@ for event in longpoll.listen():
             keyboard.add_openlink_button("URL кнопка", "Кнопка")
 
         elif event.object.message["text"] == "3":
-            send_message_carusel(user_id, "Карусель!", template=kok)
+            send_message_carousel(user_id, "Карусель!", template=carousel)

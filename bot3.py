@@ -2,87 +2,25 @@ from vk_api import VkApi
 from vk_api.utils import get_random_id
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
-from vk_api.longpoll import VkLongPoll, VkEventType
+
 import json
 import mysql.connector
 from mysql.connector import Error
 import re
 import random
 
-buttons = {
-                "action": {
-                    "type": "open_link",
-                    "link": "https://vk.com/littlebr0therr",
-                    "label": "От 3000 куб|1400 руб",
-                    "payload": "{}"
-                },
-
-            },
-
-bt = buttons
-
-
-carousel = {
-    "type": "carousel",
-    "elements": [{
-        "photo_id": "-146384697_457239210",
-        "title": "Вентиляция приточная",
-        "description": "Вентиляция приточная",
-        "action": {
-            "type": "open_link",
-            "link": "https://vk.com/littlebr0therr"
-        },
-        "buttons": [
-            {
-                "action": {
-                    "type": "open_link",
-                    "link": "https://vk.com/littlebr0therr",
-                    "label": "До 1500 куб|800 руб",
-                    "payload": "{}"
-                },
-
-            },
-            {
-                "action": {
-                    "type": "open_link",
-                    "link": "https://vk.com/littlebr0therr",
-                    "label": "До 3000 куб|1000 руб",
-                    "payload": "{}"
-                },
-
-            },
-
-            {
-                "action": {
-                    "type": "open_link",
-                    "link": "https://vk.com/littlebr0therr",
-                    "label": "От 3000 куб|1400 руб",
-                    "payload": "{}"
-                },
-
-            },
-        ]
-    },
-    ]
-}
-
-
-
-
-carousel = json.dumps(carousel, ensure_ascii=False).encode('utf-8')
-carousel = str(carousel.decode('utf-8'))
-
 GROUP_ID = '204661014'
 GROUP_TOKEN = '22117b50d967969e1e3d42997ef4cebba7aec9482cbaed68cf13a6e9551de367fe3ebb9b588df4cd504e8'
-API_VERSION = '5.120'
-f_toggle: bool = False
+API_VERSION = '5.103'
+
 
 vk_session = VkApi(token=GROUP_TOKEN)
 vk = vk_session.get_api()
-longpoll = VkBotLongPoll(vk_session, group_id=GROUP_ID)
+longpoll = VkBotLongPoll(vk_session, GROUP_ID)
 
 
 def create_connection(user_name, user_password, db_name):
+
     try:
         config = {
 
@@ -94,7 +32,7 @@ def create_connection(user_name, user_password, db_name):
             'raise_on_warnings': True, }
         print("Поцепил mySQL")
     except Error as e:
-        print(f"Вот такая ошибка {e}")
+        print(f"Вот такая ошибка в функции create_connection: {e}")
     return config
 
 
@@ -102,7 +40,6 @@ connection = create_connection("root", "root", "super_servis")
 
 
 def execute_read_query(connection, query):
-    result = None
     try:
         cnx = mysql.connector.connect(**connection)
         cursor = cnx.cursor()
@@ -116,7 +53,7 @@ def execute_read_query(connection, query):
 keyboard7 = []
 
 
-def buttns_name(database, list):
+def buttons_name(database, list):
     keyboard7.clear()
     select_users = f"SELECT * FROM `{database}` ORDER BY `{database}`.`{list}` DESC"
     users = execute_read_query(connection, select_users)
@@ -143,16 +80,42 @@ def send_message(user_id, message, keyboard=None):
     vk_session.method("messages.send", post)
 
 
-# def edit_message(message, keyboard):
-#     post = {
-#         "random_id": 0,
-#         'peer_id': event.obj.peer_id,
-#         "message": message,
-#         "conversation_message_id": event.obj.conversation_message_id,
-#         "keyboard": (keyboard_1 if f_toggle else keyboard).get_keyboard()
-#     }
-#
-#     vk_session.method("messages.edit", post)
+
+def send_message_carousel(user_id, text, keyboard=None, template=None):
+    vk_session.method("messages.send", {"user_id": user_id, "message": text,
+                                        "random_id": random.randint(-9223372036854775807, 9223372036854775807),
+                                        "keyboard": keyboard, "template": template})
+
+
+def to_create_carousel(id_photo, title, description, link, label):
+    foundation = {"type": "carousel", "elements": [], }
+    label_buttons = ["Заказать услугу", "Скачать прайс"]
+    service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
+
+    for title in service_buttons_name:
+        remember_buttons = {
+            "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
+
+        properties_carousel = {"photo_id": id_photo,
+                               "title": title, "description": description,
+                               "action": {"type": "open_link", "link": link}, }
+
+        for lb in label_buttons:
+            template_buttons = {
+                "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
+
+            if remember_buttons["buttons"][0]["action"]["label"] == "":
+                remember_buttons["buttons"][0]["action"]["label"] = lb
+
+            elif remember_buttons["buttons"][0]["action"]["label"] != "":
+                template_buttons["buttons"][0]["action"]["label"] = lb
+                tb = template_buttons["buttons"][0]
+                remember_buttons["buttons"].append(tb)
+
+        properties = {**properties_carousel, **remember_buttons}
+        foundation["elements"].append(properties)
+
+    return foundation
 
 
 def main_menu(buttons_name):
@@ -177,18 +140,19 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         user_get = user_get[0]
         first_name = user_get['first_name']
 
-        if text == 'Диагностика оборудования за 1 точку':
-
-            send_message_carusel(user_id, "Карусель!", template=carousel)
-
-
-        elif text == "Сервис":
+        if text == 'Сервис':
+            carousel = to_create_carousel("-204661014_457239019", "asdasda", "asdasda", "https://vk.com/littlebr0therr",
+                                          "asdasda")
+            carousel = json.dumps(carousel, ensure_ascii=False).encode('utf-8')
+            carousel = str(carousel.decode('utf-8'))
+            send_message_carousel(user_id, "Карусель!", template=carousel)
+        elif text == "Назад":
             g = -1
             h = 0
-            servis_buttons_name = buttns_name("servis_buttons_name", "buttons_name")
+            main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
             keyboard = VkKeyboard(one_time=True)
-            hg = main_menu(servis_buttons_name)
-            for kk in hg:
+
+            for kk in main_buttons_name:
                 keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
                 if g == h:
                     keyboard.add_line()
@@ -198,69 +162,15 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
 
             keyboard.add_button("<Назад", VkKeyboardColor.NEGATIVE)
             send_message(user_id, "Сервисные услуги", keyboard)
-
-        elif text == "&lt;Назад":
-            g = -1
-            h = 0
-            keyboard = VkKeyboard(one_time=True)
-            hg = main_menu(main_buttons_name)
-            for kk in hg:
-                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-                if g != h:
-                    keyboard.add_line()
-                    g += 1
-
-            send_message(user_id, "Главное меню", keyboard)
-
-        elif text == "«Назад":
-            g = -1
-            h = 0
-            keyboard = VkKeyboard(one_time=True)
-            hg = main_menu(servis_buttons_name)
-            for kk in hg:
-                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-                if g == h:
-                    keyboard.add_line()
-                    h += 1
-                else:
-                    g += 1
-
-            keyboard.add_button("<Назад", VkKeyboardColor.NEGATIVE)
-            send_message(user_id, "Сервисные услуги", keyboard)
-
-        elif text == "Вентиляционные системы":
-            g = -2
-            h = 0
-            ventilation_buttons_name = buttns_name("ventilation_buttons_name", "buttons_name")
-            keyboard = VkKeyboard(one_time=True)
-            hg = main_menu(ventilation_buttons_name)
-            for kk in hg:
-                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-                if g != h:
-                    keyboard.add_line()
-                    g += 1
-
-            keyboard.add_button("<<Назад", VkKeyboardColor.NEGATIVE)
-
-            send_message(user_id, "Прайс листы:", keyboard)
 
         elif text != "":
             g = -1
             h = 0
-            main_buttons_name = buttns_name("main_buttons_name", "buttons_name")
-            keyboard = VkKeyboard(one_time=True)
+            main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
+            keyboard = VkKeyboard(one_time=False)
             for kk in main_menu(main_buttons_name):
                 keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
                 if g != h:
                     keyboard.add_line()
                     g += 1
             send_message(user_id, "Доброго времени суток " + first_name, keyboard)
-
-    elif event.type == VkBotEventType.MESSAGE_EVENT:
-        if event.object.payload.get('type') == 'my_own_100500_type_edit':
-            keyboard_2 = VkKeyboard(one_time=False, inline=True)
-            keyboard_2.add_callback_button('Назад',
-                                           color=VkKeyboardColor.NEGATIVE,
-                                           payload={"type": "my_own_100500_type_edit"})
-            edit_message("jnj", keyboard_2)
-            f_toggle = not f_toggle
