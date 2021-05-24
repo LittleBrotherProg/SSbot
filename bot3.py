@@ -12,10 +12,6 @@ import random
 GROUP_ID = '204661014'
 GROUP_TOKEN = '22117b50d967969e1e3d42997ef4cebba7aec9482cbaed68cf13a6e9551de367fe3ebb9b588df4cd504e8'
 API_VERSION = '5.103'
-<<<<<<< HEAD
-=======
-
->>>>>>> 725e689dce34656faad03c3ae5b67674af9acc8d
 
 vk_session = VkApi(token=GROUP_TOKEN)
 vk = vk_session.get_api()
@@ -23,7 +19,6 @@ longpoll = VkBotLongPoll(vk_session, GROUP_ID)
 
 
 def create_connection(user_name, user_password, db_name):
-
     try:
         config = {
 
@@ -68,6 +63,26 @@ def buttons_name(database, list):
     return keyboard7
 
 
+def execute_query(connection, query):
+    cursor = connection.cursor()
+    try:
+        cursor.execute(query)
+        connection.commit()
+
+        print("Query executed successfully")
+    except Error as e:
+        print(f"The error '{e}' occurred")
+
+
+def filling_the_database(first_name, name):
+    print(first_name)
+    sql = f"""INSERT INTO 
+    `applications`(`id`, `first_name_vk`, `servis_name`, `social_network`, `number_phone`) 
+    VALUES 
+    ( 1, 'Григорий', '{name}', 'вк', '56756757')"""
+    execute_query(connection, sql)
+
+
 def send_message(user_id, message, keyboard=None):
     post = {
         "user_id": user_id,
@@ -83,17 +98,12 @@ def send_message(user_id, message, keyboard=None):
     vk_session.method("messages.send", post)
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 725e689dce34656faad03c3ae5b67674af9acc8d
 def send_message_carousel(user_id, text, keyboard=None, template=None):
     vk_session.method("messages.send", {"user_id": user_id, "message": text,
                                         "random_id": random.randint(-9223372036854775807, 9223372036854775807),
                                         "keyboard": keyboard, "template": template})
 
 
-<<<<<<< HEAD
 # def to_create_carousel(id_photo, title, description, link, label):
 #     foundation = {"type": "carousel", "elements": [], }
 #     label_buttons = ["Заказать услугу", "Скачать прайс"]
@@ -129,7 +139,8 @@ def even_or_odd(a):
     else:
         answer = 'Нечентное число'
     return answer
-=======
+
+
 def to_create_carousel(id_photo, title, description, link, label):
     foundation = {"type": "carousel", "elements": [], }
     label_buttons = ["Заказать услугу", "Скачать прайс"]
@@ -137,7 +148,7 @@ def to_create_carousel(id_photo, title, description, link, label):
 
     for title in service_buttons_name:
         remember_buttons = {
-            "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
+            "buttons": [{"action": {"type": "callback", "label": "", "payload": {"type": title}}, }, ]}
 
         properties_carousel = {"photo_id": id_photo,
                                "title": title, "description": description,
@@ -145,12 +156,14 @@ def to_create_carousel(id_photo, title, description, link, label):
 
         for lb in label_buttons:
             template_buttons = {
-                "buttons": [{"action": {"type": "open_link", "link": link, "label": "", "payload": "{}"}, }, ]}
+                "buttons": [{"action": {"type": "callback", "label": "", "payload": {"type": title}}, }, ]}
 
             if remember_buttons["buttons"][0]["action"]["label"] == "":
                 remember_buttons["buttons"][0]["action"]["label"] = lb
+                print(remember_buttons["buttons"][0]["action"]["payload"])
 
             elif remember_buttons["buttons"][0]["action"]["label"] != "":
+
                 template_buttons["buttons"][0]["action"]["label"] = lb
                 tb = template_buttons["buttons"][0]
                 remember_buttons["buttons"].append(tb)
@@ -159,7 +172,6 @@ def to_create_carousel(id_photo, title, description, link, label):
         foundation["elements"].append(properties)
 
     return foundation
->>>>>>> 725e689dce34656faad03c3ae5b67674af9acc8d
 
 
 def main_menu(buttons_name):
@@ -168,6 +180,15 @@ def main_menu(buttons_name):
         but = f"{button}"
         keybrd.append(but)
     return keybrd
+
+
+def edit_message(keyboard):
+    post = {
+        "keyboard": keyboard
+
+    }
+
+    vk_session.method("messages.send", post)
 
 
 def send_message_carusel(user_id, text, keyboard=None, template=None):
@@ -181,74 +202,92 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         text = event.obj.message['text']
         user_id = event.obj.message['from_id']
         user_get = vk.users.get(user_ids=user_id)
+        print(event.obj.button)
+
         user_get = user_get[0]
         first_name = user_get['first_name']
 
         if text == 'Сервис':
-<<<<<<< HEAD
-
-            #service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
-            service_buttons_name = ["d", "s", "a"]
-            number_of_buttons = (len(service_buttons_name))
-            sqrt = int(number_of_buttons ** 0.5)
-            button_counter = 0
-
-            keyboard = VkKeyboard(one_time=False, inline=True)
-
-            for name in service_buttons_name:
-                print(button_counter)
-                button_counter += 1
-                counter = even_or_odd(button_counter)
-                print(counter)
-
-                print(name)
-                if button_counter == 1:
-                    keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
-                    print("first")
-                elif counter == "Четное число":
-                    keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
-                    print("add")
-                elif counter == "Нечентное число":
-                    print("skip + add")
-                    keyboard.add_line()
-                    keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
-
-
-
-            send_message(user_id, "Сервисные услуги", keyboard)
-
-=======
             carousel = to_create_carousel("-204661014_457239019", "asdasda", "asdasda", "https://vk.com/littlebr0therr",
                                           "asdasda")
             carousel = json.dumps(carousel, ensure_ascii=False).encode('utf-8')
             carousel = str(carousel.decode('utf-8'))
             send_message_carousel(user_id, "Карусель!", template=carousel)
->>>>>>> 725e689dce34656faad03c3ae5b67674af9acc8d
-        elif text == "Назад":
-            g = -1
-            h = 0
-            main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
-            keyboard = VkKeyboard(one_time=True)
 
-            for kk in main_buttons_name:
-                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-                if g == h:
-                    keyboard.add_line()
-                    h += 1
-                else:
-                    g += 1
+            # service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
+            #
+            # number_of_buttons = (len(service_buttons_name))
+            #
+            # button_counter = 0
+            #
+            # keyboard = VkKeyboard(one_time=False, inline=True)
+            #
+            # for name in service_buttons_name:
+            #
+            #     button_counter += 1
+            #     counter = even_or_odd(button_counter)
+            #
+            #     if button_counter == 1:
+            #         keyboard.add_callback_button(label=name, color=VkKeyboardColor.PRIMARY)
+            #
+            #     elif counter == "Четное число":
+            #         keyboard.add_callback_button(label=name, color=VkKeyboardColor.PRIMARY,
+            #                                      payload={"type": "Заявка на вентиляционные системы"})
+            #
+            #     elif counter == "Нечентное число":
+            #
+            #         keyboard.add_line()
+            #         keyboard.add_callback_button(label=name, color=VkKeyboardColor.PRIMARY,
+            #                                      payload={"type": "Заявка на вентиляционные системы"})
+            #
+            # send_message(user_id, "Сервисные услуги", keyboard)
 
-            keyboard.add_button("<Назад", VkKeyboardColor.NEGATIVE)
-            send_message(user_id, "Сервисные услуги", keyboard)
+        # elif text == "Вентиляционные системы":
+        #
+        #     label_buttons = ["Заказать услугу", "Скачать прайс"]
+        #     number_of_buttons = (len(label_buttons))
+        #
+        #     button_counter = 0
+        #
+        #     keyboard = VkKeyboard(one_time=False, inline=True)
+        #
+        #     for name in label_buttons:
+        #         print(button_counter)
+        #         button_counter += 1
+        #         counter = even_or_odd(button_counter)
+        #         print(counter)
+        #
+        #         print(name)
+        #         if button_counter == 1:
+        #             keyboard.add_button(name, VkKeyboardColor.POSITIVE)
+        #             print("first")
+        #         elif counter == "Четное число":
+        #             keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
+        #             print("add")
+        #         elif counter == "Нечентное число":
+        #             print("skip + add")
+        #             keyboard.add_line()
+        #             keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
+        #
+        #     send_message(user_id, "Вентиляционные системы", keyboard)
 
-        elif text != "":
-            g = -1
-            h = 0
-            main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
-            keyboard = VkKeyboard(one_time=False)
-            for kk in main_menu(main_buttons_name):
-                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-                if g != h:
-                    keyboard.add_line()
-                    g += 1
-            send_message(user_id, "Доброго времени суток " + first_name, keyboard)
+        # elif text != "":
+        #     g = -1
+        #     h = 0
+        #     main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
+        #     keyboard = VkKeyboard(one_time=False)
+        #     for kk in main_menu(main_buttons_name):
+        #         keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
+        #         if g != h:
+        #             keyboard.add_line()
+        #             g += 1
+        #     send_message(user_id, "Доброго времени суток " + first_name, keyboard)
+    elif event.type == VkBotEventType.MESSAGE_EVENT:
+        service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
+        for name in service_buttons_name:
+            if event.object.payload.get('type') == name:
+                filling_the_database(first_name, name)
+
+                print(user_id)
+
+                print("work")
