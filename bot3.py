@@ -8,6 +8,7 @@ from mysql.connector import Error
 from vk_api import VkApi
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+from vk_api.upload import VkUpload
 
 GROUP_ID = '204661014'
 GROUP_TOKEN = '22117b50d967969e1e3d42997ef4cebba7aec9482cbaed68cf13a6e9551de367fe3ebb9b588df4cd504e8'
@@ -53,10 +54,9 @@ def buttons_name(database, list):
     select_users = f"SELECT * FROM `{database}` ORDER BY `{database}`.`{list}` DESC"
     users = execute_read_query(connection, select_users)
     for user_mysql in users:
-        print(user_mysql)
         user_vkbot = re.sub("[(|'|,)]", "", str(user_mysql))
         keyboard7.append(user_vkbot)
-        print(keyboard7)
+
     return keyboard7
 
 
@@ -70,12 +70,12 @@ def execute_query(connection, query):
         print(f"The error '{e}' occurred")
 
 
-def filling_the_database(ID, first_name, name):
-    print(first_name)
+def filling_the_database(ID, first_name, name, phone):
+    print(f"Поступила заявка на {name} от {first_name} из ВК. id заказчика {ID} и его номер телфона{phone}")
     sql = f"""INSERT INTO 
     `applications`(`id`, `first_name_vk`, `servis_name`, `social_network`, `number_phone`) 
     VALUES 
-    ( {ID}, '{first_name}', '{name}', 'вк', '56756757')"""
+    ( {ID}, '{first_name}', '{name}', 'ВК', '{phone}')"""
     execute_query(connection, sql)
 
 
@@ -156,7 +156,7 @@ def to_create_carousel(id_photo, title, description, link, label):
 
             if remember_buttons["buttons"][0]["action"]["label"] == "":
                 remember_buttons["buttons"][0]["action"]["label"] = lb
-                print(remember_buttons["buttons"][0]["action"]["payload"])
+
 
             elif remember_buttons["buttons"][0]["action"]["label"] != "":
 
@@ -181,9 +181,17 @@ def main_menu(buttons_name):
 def edit_message(keyboard):
     post = {
         "keyboard": keyboard
-
     }
 
+    vk_session.method("messages.send", post)
+
+
+def send_file(user_id, doc):
+    post = {
+        "user_id": user_id,
+        "doc": doc,
+        "random_id": 0
+    }
     vk_session.method("messages.send", post)
 
 
@@ -197,8 +205,9 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
         connection = create_connection("localhost", "root", "root", "super_servis")
         text = event.obj.message['text']
-        print(event.object.message)
+
         user_id = event.obj.message['from_id']
+        peer_id = event.obj.message['peer_id']
         user_get = vk.users.get(user_ids=user_id)
         user_get = user_get[0]
         first_name = user_get['first_name']
@@ -211,13 +220,14 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
             send_message_carousel(user_id, "Карусель!", template=carousel)
 
         elif text == "Заказать услугу":
-            lol = (event.object.message['payload'])
-            user_vkbot = re.sub("[{|'|})]", "", lol)
-            print(user_vkbot)
-            payload = ast.literal_eval('{' + user_vkbot + '}')
-            print(payload)
             send_message(user_id, "Для оформления заказа укажите свой номер")
-            filling_the_database(user_id, first_name, payload['type'])
+
+        elif text == "Скачать прайс":
+            doc = "doc422264572_584086035"
+            print("lol")
+
+            vk_session.method("messages.send", {"user_id": user_id, "attachment": "doc-204661014_603928275",
+                                                "random_id": 0})
 
 
         elif text[0] not in ["7", "8"]:
@@ -235,13 +245,13 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         elif text[0] not in ["+", "7", "8"]:
             if len(text) == 11 or 12:
                 send_message(user_id, "Введённый номер прошёл проверку")
-                sql = f"UPDATE applications SET number_phone = {text} WHERE ID = {user_id}"
-                execute_query(connection, sql)
+                payload_str = (event.object.message['payload'])
+                payload_dict = re.sub("[{|'|})]", "", payload_str)
+                payload = ast.literal_eval('{' + payload_dict + '}')
+
+                filling_the_database(user_id, first_name, payload['type'], text)
             else:
                 send_message(user_id, "Вынеправильно ввели номер")
-
-        elif text == "Заказать услугу":
-            print(True)
 
             # send_message_carousel(user_id, "Проверка номера пройдена")
 
@@ -301,7 +311,6 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         #             keyboard.add_button(name, VkKeyboardColor.NEGATIVE)
         #
         #     send_message(user_id, "Вентиляционные системы", keyboard)
-
 
     # elif event.type == VkBotEventType.MESSAGE_EVENT:
     #     service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
