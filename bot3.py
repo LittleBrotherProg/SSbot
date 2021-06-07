@@ -1,13 +1,13 @@
-from vk_api import VkApi
-from vk_api.utils import get_random_id
-from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
-
 import json
+import random
+import re
+import ast
+
 import mysql.connector
 from mysql.connector import Error
-import re
-import random
+from vk_api import VkApi
+from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
+from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 GROUP_ID = '204661014'
 GROUP_TOKEN = '22117b50d967969e1e3d42997ef4cebba7aec9482cbaed68cf13a6e9551de367fe3ebb9b588df4cd504e8'
@@ -18,34 +18,31 @@ vk = vk_session.get_api()
 longpoll = VkBotLongPoll(vk_session, GROUP_ID)
 
 
-def create_connection(user_name, user_password, db_name):
+def create_connection(host_name, user_name, user_password, db_name):
+    connection = None
     try:
-        config = {
-
-            'user': user_name,
-            'password': user_password,
-            'host': '127.0.0.1',
-            'port': '3306',
-            'database': db_name,
-            'raise_on_warnings': True, }
-        print("Поцепил mySQL")
+        connection = mysql.connector.connect(
+            host=host_name,
+            user=user_name,
+            passwd=user_password,
+            database=db_name
+        )
+        print("Connection to MySQL DB successful")
     except Error as e:
-        print(f"Вот такая ошибка в функции create_connection: {e}")
-    return config
+        print(f"The error '{e}' occurred")
 
-
-connection = create_connection("root", "root", "super_servis")
+    return connection
 
 
 def execute_read_query(connection, query):
+    cursor = connection.cursor()
+    result = None
     try:
-        cnx = mysql.connector.connect(**connection)
-        cursor = cnx.cursor()
         cursor.execute(query)
         result = cursor.fetchall()
         return result
     except Error as e:
-        print(f"Вот такая ошибка {e}")
+        print(f"The error '{e}' occurred")
 
 
 keyboard7 = []
@@ -68,18 +65,17 @@ def execute_query(connection, query):
     try:
         cursor.execute(query)
         connection.commit()
-
         print("Query executed successfully")
     except Error as e:
         print(f"The error '{e}' occurred")
 
 
-def filling_the_database(first_name, name):
+def filling_the_database(ID, first_name, name):
     print(first_name)
     sql = f"""INSERT INTO 
     `applications`(`id`, `first_name_vk`, `servis_name`, `social_network`, `number_phone`) 
     VALUES 
-    ( 1, 'Григорий', '{name}', 'вк', '56756757')"""
+    ( {ID}, '{first_name}', '{name}', 'вк', '56756757')"""
     execute_query(connection, sql)
 
 
@@ -133,12 +129,12 @@ def send_message_carousel(user_id, text, keyboard=None, template=None):
 #         foundation["elements"].append(properties)
 #     print(foundation)
 #     return foundation
-def even_or_odd(a):
-    if a % 2 == 0:
-        answer = 'Четное число'
-    else:
-        answer = 'Нечентное число'
-    return answer
+# def even_or_odd(a):
+#     if a % 2 == 0:
+#         answer = 'Четное число'
+#     else:
+#         answer = 'Нечентное число'
+#     return answer
 
 
 def to_create_carousel(id_photo, title, description, link, label):
@@ -148,7 +144,7 @@ def to_create_carousel(id_photo, title, description, link, label):
 
     for title in service_buttons_name:
         remember_buttons = {
-            "buttons": [{"action": {"type": "callback", "label": "", "payload": {"type": title}}, }, ]}
+            "buttons": [{"action": {"type": "text", "label": "", "payload": {'type': title}}, }, ]}
 
         properties_carousel = {"photo_id": id_photo,
                                "title": title, "description": description,
@@ -156,7 +152,7 @@ def to_create_carousel(id_photo, title, description, link, label):
 
         for lb in label_buttons:
             template_buttons = {
-                "buttons": [{"action": {"type": "callback", "label": "", "payload": {"type": title}}, }, ]}
+                "buttons": [{"action": {"type": "text", "label": "", "payload": {'type': title}}, }, ]}
 
             if remember_buttons["buttons"][0]["action"]["label"] == "":
                 remember_buttons["buttons"][0]["action"]["label"] = lb
@@ -199,11 +195,11 @@ def send_message_carusel(user_id, text, keyboard=None, template=None):
 
 for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
     if event.type == VkBotEventType.MESSAGE_NEW:
+        connection = create_connection("localhost", "root", "root", "super_servis")
         text = event.obj.message['text']
+        print(event.object.message)
         user_id = event.obj.message['from_id']
         user_get = vk.users.get(user_ids=user_id)
-        print(event.obj.button)
-
         user_get = user_get[0]
         first_name = user_get['first_name']
 
@@ -213,6 +209,41 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
             carousel = json.dumps(carousel, ensure_ascii=False).encode('utf-8')
             carousel = str(carousel.decode('utf-8'))
             send_message_carousel(user_id, "Карусель!", template=carousel)
+
+        elif text == "Заказать услугу":
+            lol = (event.object.message['payload'])
+            user_vkbot = re.sub("[{|'|})]", "", lol)
+            print(user_vkbot)
+            payload = ast.literal_eval('{' + user_vkbot + '}')
+            print(payload)
+            send_message(user_id, "Для оформления заказа укажите свой номер")
+            filling_the_database(user_id, first_name, payload['type'])
+
+
+        elif text[0] not in ["7", "8"]:
+            g = -1
+            h = 0
+            main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
+            keyboard = VkKeyboard(one_time=False)
+            for kk in main_menu(main_buttons_name):
+                keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
+                if g != h:
+                    keyboard.add_line()
+                    g += 1
+            send_message(user_id, "Доброго времени суток " + first_name, keyboard)
+
+        elif text[0] not in ["+", "7", "8"]:
+            if len(text) == 11 or 12:
+                send_message(user_id, "Введённый номер прошёл проверку")
+                sql = f"UPDATE applications SET number_phone = {text} WHERE ID = {user_id}"
+                execute_query(connection, sql)
+            else:
+                send_message(user_id, "Вынеправильно ввели номер")
+
+        elif text == "Заказать услугу":
+            print(True)
+
+            # send_message_carousel(user_id, "Проверка номера пройдена")
 
             # service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
             #
@@ -271,23 +302,17 @@ for event in VkBotLongPoll(vk_session, group_id=GROUP_ID).listen():
         #
         #     send_message(user_id, "Вентиляционные системы", keyboard)
 
-        # elif text != "":
-        #     g = -1
-        #     h = 0
-        #     main_buttons_name = buttons_name("main_buttons_name", "buttons_name")
-        #     keyboard = VkKeyboard(one_time=False)
-        #     for kk in main_menu(main_buttons_name):
-        #         keyboard.add_button(kk, VkKeyboardColor.PRIMARY)
-        #         if g != h:
-        #             keyboard.add_line()
-        #             g += 1
-        #     send_message(user_id, "Доброго времени суток " + first_name, keyboard)
-    elif event.type == VkBotEventType.MESSAGE_EVENT:
-        service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
-        for name in service_buttons_name:
-            if event.object.payload.get('type') == name:
-                filling_the_database(first_name, name)
 
-                print(user_id)
-
-                print("work")
+    # elif event.type == VkBotEventType.MESSAGE_EVENT:
+    #     service_buttons_name = buttons_name("servis_buttons_name", "buttons_name")
+    #     for name in service_buttons_name:
+    #         if event.object.payload.get('type') == name:
+    #             print(event.object)
+    #             send_message(user_id, "Для оформления заказа укажите свой номер")
+    #             filling_the_database(user_id, first_name, name)
+    #
+    #             print(name)
+    #
+    #             print(user_id)
+    #
+    #             print("work")
